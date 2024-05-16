@@ -1,7 +1,8 @@
-# Power BI: Coffee Store 
+# Coffee Store Project
 
 Description: Data analysis for Meki Group - a coffee business chain headquartered in the US and many branches around the world. You will be provided by the company with raw data sets in .csv format about sales history and other information such as stores, customer information, employees and products the company is selling. Your mission is to use analytical skills and thinking to help Meki Group answer questions surrounding the company's business activities as well as make reasonable suggestions for Meki Group to have the best results. timely and accurate decisions.
 
+# A. PowerBI - Dashboard:
 ## 1. Data Modeling:
 
 - From 3 sales revenue data tables from 2020-2022, I have combined them into one large table to perform data modeling in Power BI as follows:
@@ -47,7 +48,63 @@ Finally, I built a dashboard to track revenue and profits of products sold as fo
 
 ![](/img/product.png)
 
+# B. SQL - RFM Analysis: Customer Segmentation
+
+In marketing, sometimes we need to group customers to use many campaigns. This helps boost the profit of company. To do this, I will use RFM Analyst by SQL for Customer Segmentation.
+
+- RFM stands for Retency - Frequency - Monetary. Based on the above three factors, the customer portrait will be portrayed for appropriate promotion.
+
+- I wrote a SQL script based on store transactions from 3 tables 2020-2022. The code will divide customers into the following groups:
+
+    - Loyal
+    - Promising
+    - Big Spenders
+    - New Customers
+    - Potential Churn
+    - Lost
+
+- SQL Script:
+```sql
+WITH rfm_cal AS (SELECT 
+  customer_id
+  ,DATE_DIFF((SELECT MAX(transaction_date) FROM sales), MAX(transaction_date), DAY)  AS Recency
+  ,COUNT(DISTINCT transaction_id) Frequency
+  ,ROUND(SUM(quantity_sold*unit_price),2) Monetary
+FROM `valued-plane-361602.study.sales`
+GROUP BY 1
+)
+
+,rfm_score AS(SELECT * 
+  ,NTILE(4) OVER(ORDER BY Recency DESC) R_Score
+  ,NTILE(4) OVER(ORDER BY Frequency ASC) F_Score
+  ,NTILE(4) OVER(ORDER BY Monetary ASC) M_Score
+FROM rfm_cal)
+
+,rfm_table AS (
+SELECT *, CONCAT(R_Score, F_Score, M_Score) RFM_Score
+FROM rfm_score)
+
+SELECT 
+    customer_id
+    ,CASE 
+        WHEN REGEXP_CONTAINS(RFM_Score, r'^[3-4][3-4][3-4]$') THEN 'Loyal'
+        WHEN REGEXP_CONTAINS(RFM_Score, r'^[3-4][3-4][1-2]$') THEN 'Promising'
+        WHEN REGEXP_CONTAINS(RFM_Score, r'^[3-4][1-2]4$') THEN 'Big Spenders'
+        WHEN REGEXP_CONTAINS(RFM_Score, r'^[3-4][1-2].$') THEN 'New Customers'
+        WHEN REGEXP_CONTAINS(RFM_Score, r'^2..$') THEN 'Potential Churn'
+        WHEN REGEXP_CONTAINS(RFM_Score, r'^1..$') THEN 'Lost'
+    END AS Segmentation
+FROM rfm_table;
+```
+- After that, we will have the following customer segmentation:
+![](img/segment.png)
+
+- Looking at the chart above, we can see that although there are many new and loyal customers, the store also has a file of customers at risk of leaving.
+
+- Although the furthest purchase date in the store's transaction history is only about 1 month, it is because the store has a convenient geographical location and a frequent customer base. Therefore, businesses can implement discount campaigns combined with feedback to find out customer pain points.
+
 ## Access my dashboard:
 Check out the sketch at: [Link](https://ngynzyy.github.io/coffee-store-dashboard.pdf)
 
 You can download the dashboard and take a look at: **coffee-store-dashboard.pbix**
+
